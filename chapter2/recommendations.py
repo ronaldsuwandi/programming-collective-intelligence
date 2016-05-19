@@ -110,7 +110,6 @@ def get_recommendations(prefs, person, similarity=sim_pearson):
         if other == person:
             continue
         sim = similarity(prefs, person, other)
-
         # ignore scores of zero or lower
         if sim <= 0:
             continue
@@ -124,11 +123,21 @@ def get_recommendations(prefs, person, similarity=sim_pearson):
                 sim_sums.setdefault(item, 0)
                 sim_sums[item] += sim
 
-        # Create the normalized list
-        rankings = [(total/sim_sums[item], item) for item, total in totals.items()]
+    # Create the normalized list
+    rankings = [(total/sim_sums[item], item) for item, total in totals.items()]
 
-        # Return thesorted list
-        rankings.sort()
-        rankings.reverse()
-        return rankings
+    # Return thesorted list
+    rankings.sort()
+    rankings.reverse()
+    return rankings
 
+
+def transform_prefs(prefs):
+    result = {}
+    for person in prefs:
+        for item in prefs[person]:
+            result.setdefault(item, {})
+
+            # Flip item and person
+            result[item][person]=prefs[person][item]
+    return result
