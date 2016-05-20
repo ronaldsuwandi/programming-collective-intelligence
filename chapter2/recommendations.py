@@ -91,8 +91,8 @@ def sim_pearson(prefs, p1, p2):
 # Returns the best matches for person from the prefs dictionary
 # Number of results and similarity function are optional params
 def top_matches(prefs, person, n=5, similarity=sim_pearson):
-    scores=[(similarity(prefs, person, other), other)
-            for other in prefs if other != person]
+    scores = [(similarity(prefs, person, other), other)
+              for other in prefs if other != person]
 
     # Sort the list so the highest scores appears on the top
     scores.sort()
@@ -118,13 +118,13 @@ def get_recommendations(prefs, person, similarity=sim_pearson):
             if item not in prefs[person] or prefs[person][item] == 0:
                 # Similarity * Score
                 totals.setdefault(item, 0)
-                totals[item] += prefs[other][item]*sim
+                totals[item] += prefs[other][item] * sim
                 # Sum of similarities
                 sim_sums.setdefault(item, 0)
                 sim_sums[item] += sim
 
     # Create the normalized list
-    rankings = [(total/sim_sums[item], item) for item, total in totals.items()]
+    rankings = [(total / sim_sums[item], item) for item, total in totals.items()]
 
     # Return thesorted list
     rankings.sort()
@@ -139,5 +139,24 @@ def transform_prefs(prefs):
             result.setdefault(item, {})
 
             # Flip item and person
-            result[item][person]=prefs[person][item]
+            result[item][person] = prefs[person][item]
+    return result
+
+
+def calculate_similar_items(prefs, n=10):
+    # Create a dictionary of items showing which other items they are most similar to
+    result = {}
+
+    # Invert the preference matrix to be item-centric
+    item_prefs = transform_prefs(prefs)
+    c = 0
+    for item in item_prefs:
+        # Status updates for large data set
+        c += 1
+        if c % 100 == 0:
+            print("%d / %d%", (c, len(item_prefs)))
+        # Find the most similar item to this one
+        scores = top_matches(item_prefs, item, n=n, similarity=sim_distance)
+        result[item] = scores
+        print("RESULT=", scores)
     return result
