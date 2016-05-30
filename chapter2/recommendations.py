@@ -158,5 +158,53 @@ def calculate_similar_items(prefs, n=10):
         # Find the most similar item to this one
         scores = top_matches(item_prefs, item, n=n, similarity=sim_distance)
         result[item] = scores
-        print("RESULT=", scores)
     return result
+
+
+def get_recommended_items(prefs, item_match, user):
+    user_ratings = prefs[user]
+    scores = {}
+    total_sim = {}
+
+    # loop over items rated by this user
+    for (item, rating) in user_ratings.items():
+
+        # Loop over items similar to this one
+        for (similarity, item2) in item_match[item]:
+
+            # Ignore if this user has already rated this item
+            if item2 in user_ratings:
+                continue
+
+            # Weighted sum of rating times similarity
+            scores.setdefault(item2, 0)
+            scores[item2] += similarity * rating
+
+            # sum of all similarities
+            total_sim.setdefault(item2, 0)
+            total_sim[item2] += similarity
+
+    # Divide each total score by total weighting to get an average
+    rankings = [(score / total_sim[item], item) for item, score in scores.items()]
+
+    # Return the rankings from highest to lowest
+    rankings.sort()
+    rankings.reverse()
+    return rankings
+
+
+def load_movielens(path='/Users/rsuwandi/Personal/programming-collective-intelligence/chapter2/ml-100k'):
+    # Get movie titles
+    movies = {}
+    for line in open(path + '/u.item', encoding='ISO-8859-1'):
+        (id, title) = line.split('|')[0:2]
+        movies[id] = title
+
+    # Load data
+    prefs = {}
+    for line in open(path + '/u.data'):
+        (user, movieid, rating, ts) = line.split('\t')
+        prefs.setdefault(user, {})
+        prefs[user][movies[movieid]] = float(rating)
+
+    return prefs
