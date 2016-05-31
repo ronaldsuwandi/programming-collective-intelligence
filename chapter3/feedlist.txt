@@ -1,0 +1,12 @@
+http://feeds.feedburner.com/37signals/beMH
+http://feeds.feedburner.com/blogspot/bRuz
+http://googleblog.blogspot.com/rss.xml
+http://feeds.feedburner.com/GoogleOperatingSystem
+http://headrush.typepad.com/creating_passionate_users/index.rdf
+http://feeds.feedburner.com/Mashable
+http://www.engadget.com/rss.xml
+http://www.huffingtonpost.com/raw_feed_index.rdf
+http://www.hyperorg.com/blogger/index.rdf
+http://www.joelonsoftware.com/rss.xml
+http://www.kotaku.com/index.xml
+http://www.wired.com/rss/index.xml
