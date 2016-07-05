@@ -130,3 +130,46 @@ class Crawler:
         self.con.execute('CREATE INDEX urltoidx ON link(toid)')
         self.con.execute('CREATE INDEX urlfromidx ON link(fromid)')
         self.dbcommit()
+
+
+class Searcher:
+    def __init__(self, dbname):
+        self.con = sqlite3.connect(dbname)
+
+    def __del__(self):
+        self.con.close()
+
+    def get_match_rows(self, q):
+        # Strings to build query
+        field_list = 'w0.urlid'
+        table_list = ''
+        clause_list = ''
+        word_ids = []
+
+        # Split words by spaces
+        words = q.split(' ')
+        table_number = 0
+
+        for word in words:
+            word_row = self.con.execute("select rowid from wordlist where word='%s'" % word).fetchone()
+
+            if word_row is not None:
+                word_id = word_row[0]
+                word_ids.append(word_id)
+
+                if table_number > 0:
+                    table_list += ','
+                    clause_list += ' and '
+                    clause_list += 'w%d.urlid=%d.urlid and ' % (table_number - 1, table_number)
+
+                field_list += ', w%d.location' % table_number
+                table_list += 'wordlocation w%d' % table_number
+                clause_list += 'w%d.wordid = %d' % (table_number, word_id)
+                table_number += 1
+
+        # Create the query from the separate parts
+        full_query = 'select %s from %s where %s ' % (field_list, table_list, clause_list)
+        cur = self.con.execute(full_query)
+        rows = [row for row in cur]
+
+        return rows, word_ids
