@@ -83,7 +83,7 @@ class Classifier:
 
         # Calculate the weighted average
         return ((weight * assumed_probability) + (total_appeared * prob)) / (
-        weight + total_appeared)
+            weight + total_appeared)
 
 
 class NaiveBayes(Classifier):
@@ -134,3 +134,18 @@ class NaiveBayes(Classifier):
                 return default
 
         return best_category
+
+
+class FisherClassifier(Classifier):
+    def cprob(self, feature, category):
+        # Frequency of this feature in this category
+        clf = self.feature_probability(feature, category)
+        if clf == 0:
+            return 0
+
+        # Frequency of this feature in all categories
+        freqsum = sum([self.feature_probability(feature, category)
+                       for category in self.categories()])
+
+        # Probability is the frequency in this category divided by the overall frequency
+        return clf/freqsum
