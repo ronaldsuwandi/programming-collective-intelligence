@@ -1,5 +1,6 @@
 import re
 import math
+import sqlite3
 
 
 def get_words(doc):
@@ -25,11 +26,19 @@ class Classifier:
         self.category_counts = {}
         self.get_features = get_features
 
+    def set_db(self, dbfile):
+        self.con = sqlite3.connect(dbfile)
+        self.con.execute('create table if not exists fc(feature, category, count)')
+        self.con.execute('create table if not exists cc(category, count)')
+
     # Increase count of a feature/category pair
     def inc_feature_category(self, feature, category):
-        self.feature_category_combinations.setdefault(feature, {})
-        self.feature_category_combinations[feature].setdefault(category, 0)
-        self.feature_category_combinations[feature][category] += 1
+        count = self.feature_count(feature, category)
+        if count == 0:
+            self.con.execute("insert into fc values ('%s', '%s', 1)" % (feature, category))
+        else:
+            self.con.execute("update fc set count=%d where feature='%s' and category='%s'"
+                             % (count + 1, feature, category))
 
     # Increase the count of a category
     def inc_category(self, category):
@@ -38,10 +47,12 @@ class Classifier:
 
     # Number of times a feature has appeared in category
     def feature_count(self, feature, category):
-        if feature in self.feature_category_combinations and \
-                        category in self.feature_category_combinations[feature]:
-            return float(self.feature_category_combinations[feature][category])
-        return 0.0
+        res = self.con.execute('select count from fc where feature = "%s" and category = "%s"'
+                               % (feature, category)).fetchone()
+        if res is None:
+            return 0
+        else:
+            return float(res[0])
 
     # Number of items in a category
     def category_count(self, category):
@@ -137,7 +148,19 @@ class NaiveBayes(Classifier):
 
 
 class FisherClassifier(Classifier):
-    def cprob(self, feature, category):
+    def __init__(self, get_features):
+        Classifier.__init__(self, get_features)
+        self.minimums = {}
+
+    def set_minimum(self, category, minimum):
+        self.minimums[category] = minimum
+
+    def get_minimum(self, category):
+        if category not in self.minimums:
+            return 0
+        return self.minimums[category]
+
+    def category_probability(self, feature, category):
         # Frequency of this feature in this category
         clf = self.feature_probability(feature, category)
         if clf == 0:
@@ -148,4 +171,36 @@ class FisherClassifier(Classifier):
                        for category in self.categories()])
 
         # Probability is the frequency in this category divided by the overall frequency
-        return clf/freqsum
+        return clf / freqsum
+
+    def fisher_probability(self, item, category):
+        # Multiply all probabilities together
+        p = 1
+        features = self.get_features(item)
+        for feature in features:
+            p *= (self.weighted_probability(feature, category, self.category_probability))
+
+        # Natural log and multiply by -2
+        fisher_score = -2 * math.log(p)
+
+        # Inverse chi2 to get a probability
+        return self.inverse_chi2(fisher_score, len(features) * 2)
+
+    def inverse_chi2(self, chi, df):
+        m = chi / 2.0
+        sum = term = math.exp(-m)
+        for i in range(1, df // 2):
+            term *= m / i
+            sum += term
+        return min(sum, 1.0)
+
+    def classify(self, item, default=None):
+        # Loop through looking for the best rsult
+        best = default
+        max_prob = 0.0
+        for category in self.categories():
+            p = self.fisher_probability(item, category)
+            if p > self.get_minimum(category) and p > max_prob:
+                best = category
+                max_prob = p
+        return best
