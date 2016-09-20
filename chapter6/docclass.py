@@ -42,8 +42,12 @@ class Classifier:
 
     # Increase the count of a category
     def inc_category(self, category):
-        self.category_counts.setdefault(category, 0)
-        self.category_counts[category] += 1
+        current_count = self.category_count(category)
+        if current_count == 0:
+            self.con.execute("insert into cc values ('%s', 1)" % (category))
+        else:
+            self.con.execute("update cc set count=%d where category='%s'"
+                             % (current_count+1, category))
 
     # Number of times a feature has appeared in category
     def feature_count(self, feature, category):
@@ -56,17 +60,24 @@ class Classifier:
 
     # Number of items in a category
     def category_count(self, category):
-        if category in self.category_counts:
-            return float(self.category_counts[category])
-        return 0
+        res = self.con.execute('select count from cc where category="%s"' % (category)).fetchone()
+        if res is None:
+            return 0
+        else:
+            return float(res[0])
 
     # Total number of items
     def total_count(self):
-        return sum(self.category_counts.values())
+        res = self.con.execute('select sum(count) from cc').fetchone();
+        if res is None:
+            return 0
+        else:
+            return res[0]
 
     # List of all categories
     def categories(self):
-        return self.category_counts.keys()
+        cur = self.con.execute('select category from cc');
+        return [d[0] for d in cur]
 
     def train(self, item, category):
         features = self.get_features(item)
@@ -75,6 +86,7 @@ class Classifier:
 
         # Increment count for this category
         self.inc_category(category)
+        self.con.commit()
 
     def feature_probability(self, feature, category):
         if self.category_count(category) == 0:
